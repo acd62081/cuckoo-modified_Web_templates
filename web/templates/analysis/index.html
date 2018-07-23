@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% block content %}
+
+    <div id="recent_analysis">
+
+        <div class="nav_container" style="margin-bottom:30px;">
+            <div></div>
+            <div id="item"><a href="#" data-filter="cat_files">Files</a></div>
+            <div id="item"><a href="#" data-filter="cat_urls">URLs</a></div>
+            <div id="item" class="item-spacer"></div>
+            <div id="item"><a href="#" data-filter="score_0-4">Score 0 - 4</a></div>
+            <div id="item"><a href="#" data-filter="score_4-7">Score 4 - 7</a></div>
+            <div id="item"><a href="#" data-filter="score_7-10">Score 7 - 10</a></div>
+            <!--<div id="item"><a href="#" data-filter="pack_pdf">PDF</a></div>
+            <div id="item"><a href="#" data-filter="pack_office">Office</a></div>-->
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <style>
+                    table#recent span.badge{
+                        border-radius: 0px;
+                    }
+                </style>
+
+                
+
+                <table id="recent" class="table table-striped table-responsive" style="table-layout: fixed;">
+                    <div class="panel panel-primary">
+            <div class="panel-heading">
+                <h3 class="panel-title">Recent Files</h3>
+            </div>
+            {% if files %}
+            <table class="table table-striped" style="table-layout: fixed;">
+                <thead>
+                <tr>
+                    {% if config.expanded_dashboard %}
+                      <th width="5%">ID</th>
+                      <th width="10%">Timestamp</th>
+                      <th width="15%">Filename</th>
+                      <th width="15%">MD5</th>
+                      <th width="5%">PKG</th>
+                      {% if config.moloch %}
+                      <th width="5%">Moloch</th>
+                      {% endif %}
+                      {% if config.display_office_martians %}
+                      <th width="5%">Martians</th>
+                      {% endif %}
+                      {% if config.suricata %}
+                      <th width="10%">Suricata Alerts/HTTP/TLS/Files</th>
+                      {% endif %}
+                      {% if config.virustotal %}
+                      <th width="5%">VT</th>
+                      {% endif %}
+                      <th width="5%">MalScore</th>
+                      <th width="10%">MalFamily</th>
+                      <th width="5%">PCAP</th>
+                      <th width="10%">ClamAV</th>
+                      <th width="5%">Custom</th>
+                      {% if config.display_shrike %}
+                      <th width="5%">Shrike</th>
+                      {% endif %}
+                      <th width="5%" style="text-align: right;">Status</th>
+                    {% else %}
+                      <th width="5%">ID</th>
+                      <th width="12%">Timestamp</th>
+                      <th width="37%">Filename</th>
+                      <th width="20%">MD5</th>
+                      {% if config.moloch %}
+                      <th width="5%">Moloch</th>
+                      {% endif %}
+                      {% if config.display_office_martians %}
+                      <th width="5%">Martians</th>
+                      {% endif %}
+                      {% if config.suricata %}
+                      <th width="7%">SuriAlert</th>
+                      {% endif %}
+                      {% if config.virustotal %}
+                      <th width="5%">VT</th>
+                      {% endif %}
+                      <th width="5%">MalScore</th>
+                      {% if config.display_shrike %}
+                      <th width="5%">Shrike</th>
+                      {% endif %}
+                      <th width="6%" style="text-align: right;">Status</th>
+                    {% endif %}
+                    {% endif %}
+                </tr>
+                </thead>
+                <table class="table table-striped" style="table-layout: fixed;">
+                   <tbody>
+                {% for analysis in files %}
+                    <tr>
+                        <td>
+                            {{analysis.id}}
+                        </td>
+                        <td>
+                        {% if analysis.status == "reported" %}
+                            {{analysis.completed_on}}
+                        {% else %}
+                            <span class="muted">{{analysis.added_on}} (added on)</span>
+                        {% endif %}
+                        </td>
+                        <td>
+                        {{analysis.filename}}
+                        </td>
+                        <td style="word-wrap: break-word;">
+                            {% if analysis.status == "reported" %}
+                                <a href="{% url "report" analysis.id %}"><span class="mono">{{analysis.sample.md5}}</span></a>
+                            {% elif analysis.status == "running" or analysis.status == "completed" %}
+                                <a href="{% url "submission_status" analysis.id %}"><span class="mono">{{analysis.sample.md5}}</span></a>
+                            {% else %}
+                                <span class="mono">{{analysis.sample.md5}}</span>
+                            {% endif %}
+                        </td>
+                        {% if config.expanded_dashboard %}
+                        <td>
+                            {% if analysis.package %}
+                                  <span class="mono">{{analysis.package}}</span>
+                            {% else %}
+                                  <span class="mono">None</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        {% if config.moloch %}
+                        <td>
+                            {% if analysis.moloch_url %}
+                                <a href={{analysis.moloch_url}} target="_blank"><span class="mono">MOLOCH</span></a>
+                            {% else %}
+                                  <span class="mono">None</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        {% if config.display_office_martians %}
+                        <td>
+                            <span class="mono">
+                            {% if analysis.f_mlist_cnt %}
+                            {{analysis.f_mlist_cnt}}
+                            {% else %}
+                            None
+                            {% endif %}
+                            </span>
+                        </td>
+                        {% endif %}
+                        {% if config.suricata %}
+                        <td>
+                            <span class="mono">
+                            {% if analysis.suri_alert_cnt %}
+                            <a href="{% url "surialert" analysis.id %}" target="_blank">{{analysis.suri_alert_cnt}}</a><!--
+                            {% else %}
+                            0<!--
+                            {% endif %}
+                            {% if config.expanded_dashboard %}
+                                {% if analysis.suri_http_cnt %}
+                                -->/<a href="{% url "surihttp" analysis.id %}" target="_blank">{{analysis.suri_http_cnt}}</a><!--
+                                {% else %}
+                                -->/0<!--
+                                {% endif %}
+                                {% if analysis.suri_tls_cnt %}
+                                -->/<a href="{% url "suritls" analysis.id %}" target="_blank">{{analysis.suri_tls_cnt}}</a><!--
+                                {% else %}
+                                -->/0<!--
+                                {% endif %}
+                                {% if analysis.suri_file_cnt %}
+                                -->/<a href="{% url "surifiles" analysis.id %}" target="_blank">{{analysis.suri_file_cnt}}</a><!--
+                                {% else %}
+                                -->/0<!--
+                                {% endif %}
+                            {% endif %}
+                            --></span>
+                        </td>
+                        {% endif %}
+                        {% if config.virustotal %}
+                        <td>
+                            {% if analysis.virustotal_summary %}
+                                <a href="{% url "antivirus" analysis.id %}" target="_blank"><span class="mono">{{analysis.virustotal_summary}}</span></a>
+                            {% else %}
+                                  <span class="mono">None</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        <td>
+                            {% if analysis.malscore != None %}
+                                <span 
+                                {% if analysis.malscore <= 2.0 %}
+                                class="label label-success"
+                                {% elif analysis.malscore <= 6.0 %}
+                                class="label label-warning"
+                                {% else %}
+                                class="label label-danger"
+                                {% endif %}
+                                {% if analysis.malfamily %}
+                                title="{{analysis.malfamily}}"
+                                {% endif %}
+                                >{{analysis.malscore|floatformat:1}}</span>
+                            {% else %}
+                                <span class="mono">None</span>
+                            {% endif %}
+                        </td>
+                        {% if config.expanded_dashboard %}
+                        <td>
+                            <span class="mono">
+                                {% if analysis.malfamily %}
+                                {{analysis.malfamily}}
+                                {% else %}
+                                None
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="mono">
+                            {% if analysis.pcap_sha256 %}
+                            <a href="{% url "file" "pcap" analysis.id analysis.pcap_sha256 %}" target="_blank">PCAP</a>
+                            {% else %}
+                            None
+                            {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="mono">
+                            {% if analysis.clamav %}
+                                {{analysis.clamav}}
+                            {% else %}
+                                None
+                            {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="mono">
+                            {% if analysis.custom %}
+                                {{analysis.custom}}
+                            {% else %}
+                                None
+                            {% endif %}
+                            </span>
+                        </td>
+                        {% endif %}
+                        {% if config.display_shrike %}
+                        <td>
+                            {% if analysis.shrike_msg %}
+                                 {% if analysis.status == "reported" %}
+                                     <a href="{% url "shrike" analysis.id %}" target="_blank"><span class="mono">{{analysis.shrike_msg}}</span></a>
+                                 {% else %}
+                                     <span class="mono">{{analysis.shrike_msg}}</span>
+                                 {% endif %}
+                            {% else %}
+                                 <span class="mono">None</span>
+                            {% endif %}
+                        </td>
+                       {% endif %}
+                        <td style="text-align: right;">
+                            {% if analysis.status == "pending" %}
+                                <span class="text-muted">pending</span>
+                            {% elif analysis.status == "running" %}
+                                <span class="text-warning">running</span>
+                            {% elif analysis.status == "completed" %}
+                                <span class="text-info">processing</span>
+                            {% elif analysis.status == "reported" %}
+                                {% if analysis.errors %}
+                                    <span class="text-danger">
+                                {% else %}
+                                    <span class="text-success">
+                                {% endif%}
+
+                                reported</span>
+                            {% else %}
+                                <span class="text-danger">{{analysis.status}}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% if paging.show_file_next == "show" or paging.show_file_prev == "show" %}
+        <nav>
+           <ul class="pager">
+           {% if paging.show_file_prev == "show" %}
+               <li><a href="{% url "analysis" %}page/{{paging.prev_page}}/">&larr; Newer</a></li>
+           {% endif %}
+                   {% if paging.files_page_range %}
+               {% for page in paging.files_page_range %}
+                   {% if page == paging.current_page %}
+                   <li><a style="background-color:#eee;">{{page}}</a></li>
+                   {% else %}
+                   <li><a href="{% url "analysis" %}page/{{page}}/">{{page}}</a></li>
+                   {% endif %}
+               {% endfor %}
+           {% endif %}
+           {% if paging.show_file_next == "show" %}
+               <li><a href="{% url "analysis" %}page/{{paging.next_page}}/">Older &rarr;</a></li>
+           {% endif %}
+           </ul>
+        </nav>
+    {% endif %}
+    </div>
+
+                {% endfor %}
+                </tbody>
+                </table>
+                
+                     
+        </div>
+    {% if paging.show_file_next == "show" or paging.show_file_prev == "show" %}
+        <nav>
+           <ul class="pager">
+           {% if paging.show_file_prev == "show" %}
+               <li><a href="{% url "analysis" %}page/{{paging.prev_page}}/">&larr; Newer</a></li>
+           {% endif %}
+                   {% if paging.files_page_range %}
+               {% for page in paging.files_page_range %}
+                   {% if page == paging.current_page %}
+                   <li><a style="background-color:#eee;">{{page}}</a></li>
+                   {% else %}
+                   <li><a href="{% url "analysis" %}page/{{page}}/">{{page}}</a></li>
+                   {% endif %}
+               {% endfor %}
+           {% endif %}
+           {% if paging.show_file_next == "show" %}
+               <li><a href="{% url "analysis" %}page/{{paging.next_page}}/">Older &rarr;</a></li>
+           {% endif %}
+           </ul>
+        </nav>
+    {% endif %}
+    </div>
+
+    <div class="tab-pane fade" id="urls">
+    {% if paging.show_url_next == "show" or paging.show_url_prev == "show" %}
+        <nav>
+           <ul class="pager">
+           {% if paging.show_url_prev == "show" %}
+               <li><a href="{% url "analysis" %}page/{{paging.prev_page}}/">&larr; Newer</a></li>
+           {% endif %}
+                      {% if paging.urls_page_range %}
+               {% for page in paging.urls_page_range %}
+                   {% if page == paging.current_page %}
+                   <li><a style="background-color:#eee;">{{page}}</a></li>
+                   {% else %}
+                   <li><a href="{% url "analysis" %}page/{{page}}/">{{page}}</a></li>
+                   {% endif %}
+               {% endfor %}
+              {% endif %}
+           {% if paging.show_url_next == "show" %}
+               <li><a href="{% url "analysis" %}page/{{paging.next_page}}/">Older &rarr;</a></li>
+           {% endif %}
+           </ul>
+        </nav>
+    {% endif %}
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                <h3 class="panel-title">Recent URLs</h3>
+            </div>
+
+                <div id="no_more_results" class="container-fluid center">
+                    <span style="color: #a5a5a5;"></span>
+                </div>
+
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
