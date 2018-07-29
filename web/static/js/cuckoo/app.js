@@ -674,7 +674,7 @@ var DashboardTable = function () {
 
             $.ajax({
                 type: "POST",
-                url: "/analysis/api/tasks/recent/",
+                url: "/api/tasks/list/",
                 contentType: "application/json",
                 dataType: "json",
                 data: JSON.stringify({
@@ -886,12 +886,12 @@ $(function () {
         });
 
         // // retrieve general info about cuckoo
-        $.get('/cuckoo/api/status', function (data) {
+        $.get('/api/cuckoo/status', function (data) {
 
             // ***
             // cuckoo quickview tables
             // ***
-            var tasks_info = DashboardTable.simpleTable(data.data.tasks);
+            var tasks_info = DashboardTable.simpleTable(data.resp.data.tasks);
             $('[data-populate="statistics"]').html(tasks_info);
 
             // ***
