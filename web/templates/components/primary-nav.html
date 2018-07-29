@@ -7,11 +7,11 @@
 	</a>
 
 	<ul class="app-nav__nav--primary">
-		<li {% if "/dashboard/" in request.path or request.path == "/" %}class="active"{% endif %}><a title="Dashboard" href="{% url "dashboard" %}"><i class="fa fa-tachometer"></i> Dashboard</a></li>
-		<li {% if request.path == "/analysis/" %}class="active"{% endif %}><a href="{% url "analysis" %}"><i title="Recent"><i class="fa fa-th-list"></i> Recent</a></li>
-                <li {% if request.path == "/analysis/pending/" %}class="active"{% endif %}><a href="{% url "pending" %}" title="Pending"><i class="fa fa-cogs"></i> Pending</a></li>
-		<li {% if request.path == "/analysis/search/" %}class="active"{% endif %}><a href="{% url "search" %}" title="Search"><i class="fa fa-search"></i> Search</a></li>
-                <li {% if request.path == "/api/" %}class="active"{% endif %}><a href="{% url "api" %}" title="API"><i class="fa fa-tasks"></i> API</a></li>
+<li {% if "/dashboard/" in request.path or request.path == "/" %}class="active"{% endif %}><a title="Dashboard" href="{% url "dashboard" %}"><i class="fa fa-tachometer"></i> Dashboard</a></li>
+<li {% if request.path == "/analysis/" %}class="active"{% endif %}><a href="{% url "analysis" %}" title="Recent"><i class="fa fa-th-list"></i> Recent</a></li>
+<li {% if request.path == "/analysis/pending/" %}class="active"{% endif %}><a href="{% url "pending" %}" title="Pending"><i class="fa fa-cogs"></i> Pending</a></li>
+<li {% if request.path == "/analysis/search/" %}class="active"{% endif %}><a href="{% url "search" %}" title="Search"><i class="fa fa-search"></i> Search</a></li>
+<li {% if request.path == "/api/" %}class="active"{% endif %}><a href="{% url "api" %}" title="Search"><i class="fa fa-search"></i> API</a></li>
        </ul>
 
 
