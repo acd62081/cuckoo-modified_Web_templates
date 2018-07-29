@@ -10,7 +10,7 @@ import requests
 
 from django.conf import settings
 from wsgiref.util import FileWrapper
-from django.http import HttpResponse, StreamingHttpResponse
+from django.http import HttpResponse, StreamingHttpResponse, JsonResponse
 from django.shortcuts import render
 from django.template import RequestContext
 from django.views.decorators.csrf import csrf_exempt
@@ -1191,12 +1191,115 @@ def tasks_status(request, task_id):
 
     return jsonize(resp, response=True)
 
-if apiconf.taskreport.get("enabled"):
-    raterps = apiconf.taskreport.get("rps")
-    raterpm = apiconf.taskreport.get("rpm")
-    rateblock = True
-@ratelimit(key="ip", rate=raterps, block=rateblock)
-@ratelimit(key="ip", rate=raterpm, block=rateblock)
+    if apiconf.taskreport.get("enabled"):
+        raterps = apiconf.taskreport.get("rps")
+        raterpm = apiconf.taskreport.get("rpm")
+        rateblock = True
+    @ratelimit(key="ip", rate=raterps, block=rateblock)
+    @ratelimit(key="ip", rate=raterpm, block=rateblock)
+
+
+    def tasks_recent(request, body):
+        limit = body.get("limit", 100)
+        offset = body.get("offset", 0)
+
+    # Various filters.
+    cats = body.get("cats")
+    packs = body.get("packs")
+    score_range = body.get("malscore")
+
+    filters = {}
+
+    if cats:
+        if not list_of_strings(cats):
+            return json_error_response("invalid categories")
+        filters["info.category"] = {"$in": cats}
+
+    if packs:
+        if not list_of_strings(packs):
+            return json_error_response("invalid packages")
+        filters["info.package"] = {"$in": packs}
+
+    if score_range and isinstance(score_range, basestring):
+        if score_range.count("-") != 1:
+            return json_error_response("faulty score")
+
+        score_min, score_max = score_range.split("-")
+        if not score_min.isdigit() or not score_max.isdigit():
+            return json_error_response("faulty score")
+
+        score_min = int(score_min)
+        score_max = int(score_max)
+
+        if score_min < 0 or score_min > 10:
+            return json_error_response("faulty score")
+
+        if score_max < 0 or score_max > 10:
+            return json_error_response("faulty score")
+
+        # Because scores can be higher than 10.
+        # TODO Once we start capping the score, limit this naturally.
+        if score_max == 10:
+            score_max = 999
+
+        filters["info.score"] = {
+            "$gte": score_min,
+            "$lte": score_max,
+            }
+
+    if not isinstance(offset, (int, long)):
+        return json_error_response("invalid offset")
+
+    if not isinstance(limit, (int, long)):
+        return json_error_response("invalid limit")
+
+    # TODO Use a mongodb abstraction class once there is one.
+    cursor = mongo.db.analysis.find(
+        filters, ["info", "target"],
+        sort=[("_id", pymongo.DESCENDING)]
+    ).limit(limit).skip(offset)
+
+    tasks = {}
+    for row in cursor:
+        info = row.get("info", {})
+        if not info:
+            continue
+
+        category = info.get("category")
+        if category == "file":
+            f = row.get("target", {}).get("file", {})
+            if f.get("name"):
+                target = os.path.basename(f["name"])
+            else:
+                target = None
+                md5 = f.get("md5") or "-"
+        elif category == "url":
+            target = row["target"]["url"]
+            md5 = "-"
+        elif category == "archive":
+            target = row["target"]["human"]
+            md5 = "-"
+        else:
+            target = None
+            md5 = "-"
+
+        tasks[info["id"]] = {
+            "id": info["id"],
+            "target": target,
+            "md5": md5,
+            "category": category,
+            "added_on": info.get("added"),
+            "completed_on": info.get("ended"),
+            "status": "reported",
+            "malscore": info.get("malscore"),
+        }
+
+    return JsonResponse({
+        "tasks": sorted(
+            tasks.values(), key=lambda task: task["id"], reverse=True
+        ),
+    }, safe=False)
+
 def tasks_report(request, task_id, report_format="json"):
     if request.method != "GET":
         resp = {"error": True, "error_value": "Method not allowed"}
@@ -1981,7 +2084,7 @@ if apiconf.cuckoostatus.get("enabled"):
 def cuckoo_status(request):
     if request.method != "GET":
         resp = {"error": True, "error_value": "Method not allowed"}
-        return jsonize(resp, response=True)
+        return JsonResponse(resp, response=True)
 
     resp = {}
     if not apiconf.cuckoostatus.get("enabled"):
@@ -2004,7 +2107,7 @@ def cuckoo_status(request):
                 reported=db.count_tasks("reported")
             ),
         )
-    return jsonize(resp, response=True)
+    return JsonResponse({"status": True, "resp": resp})
 
 def limit_exceeded(request, exception):
     resp = {"error": True, "error_value": "Rate limit exceeded for this API"}
