@@ -13,6 +13,7 @@ from django.shortcuts import render
 from django.views.decorators.http import require_safe
 from django.contrib.auth.decorators import login_required
 
+
 from wsgiref.util import FileWrapper
 from django.http import StreamingHttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -25,10 +26,11 @@ from lib.cuckoo.core.database import TASK_COMPLETED, TASK_RECOVERED
 from lib.cuckoo.core.database import TASK_REPORTED, TASK_FAILED_ANALYSIS
 from lib.cuckoo.core.database import TASK_FAILED_PROCESSING, TASK_FAILED_REPORTING
 from utils import render_template
-from lib.cuckoo.common.constants import CUCKOO_VERSION
+from lib.cuckoo.common.constants import CUCKOO_ROOT, CUCKOO_VERSION
+from api.views import cuckoo_status
 from analysis.views import perform_malscore_search
 from compare.views import *
-
+from utils import render_template
 #from web.controllers.cuckoo.api import  CuckooApi
 # Conditional decorator for web authentication
 #dataarg = request.POST.get("argument", "")
@@ -46,53 +48,10 @@ class conditional_login_required(object):
 @require_safe
 @conditional_login_required(login_required, settings.WEB_AUTHENTICATION)
 def index(request):
-    db = Database()
-    results_db = pymongo.MongoClient(settings.MONGO_HOST, settings.MONGO_PORT)[settings.MONGO_DB]
-    dataarg = request.POST.get("argument", "")
-    report = dict(
-        total_samples=db.count_samples(),
-        total_tasks=db.count_tasks(),
-        states_count={},
-        estimate_hour=None,
-        estimate_day=None,
-        report_version=CUCKOO_VERSION,
-        malware_family=results_db.analysis.find({"malfamily": {"$regex": dataarg, "$options": "-i"}}).sort([["_id", -1]])
-    )
+    version = CUCKOO_VERSION
 
-    states = (
-        TASK_PENDING,
-        TASK_RUNNING,
-        TASK_COMPLETED,
-        TASK_RECOVERED,
-        TASK_REPORTED,
-        TASK_FAILED_ANALYSIS,
-        TASK_FAILED_PROCESSING,
-        TASK_FAILED_REPORTING
-    )
-  
+    report = {
+       "report_version": version,
+    }
 
-    for state in states:
-        report["states_count"][state] = db.count_tasks(state)
-
-    offset = None
-
-    # For the following stats we're only interested in completed tasks.
-    tasks = db.count_tasks(status=TASK_COMPLETED)
-    tasks += db.count_tasks(status=TASK_REPORTED)
-
-    if tasks:
-        # Get the time when the first task started and last one ended.
-        started, completed = db.minmax_tasks()
-
-        # It has happened that for unknown reasons completed and started were
-        # equal in which case an exception is thrown, avoid this.
-        if started and completed and int(completed - started):
-            hourly = 60 * 60 * tasks / (completed - started)
-        else:
-            hourly = 0
-
-        report["estimate_hour"] = int(hourly)
-        report["estimate_day"] = int(24 * hourly)
-
-    return render(request, "dashboard/index.html",
-                              {"report" : report})
+    return render_template(request, "dashboard/index.html", report=report)
